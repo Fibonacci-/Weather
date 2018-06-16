@@ -67,6 +67,7 @@
                 android:layout_height="45dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
+                android:contentDescription="@string/icon_desc"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:srcCompat="@android:color/darker_gray" />
@@ -78,7 +79,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="16dp"
-                android:text="Sunny, X dg"
+                android:text="@string/placeholder"
                 android:textAlignment="textStart"
                 android:textSize="35sp"
                 app:layout_constraintBottom_toBottomOf="@+id/iv_icon"
@@ -92,7 +93,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
-                android:text="Lots of clouds"
+                android:text="@string/placeholder"
                 android:textAlignment="center"
                 android:textSize="17sp"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -101,25 +102,31 @@
 
             <TextView
                 android:id="@+id/tv_location"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
-                android:text="Townname, US"
-                android:textSize="10sp"
+                android:text="@string/placeholder"
+                android:textAlignment="textEnd"
+                android:textSize="12sp"
                 app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/v_layout"
                 app:layout_constraintStart_toStartOf="parent" />
 
             <TextView
                 android:id="@+id/tv_updated_at"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
                 android:layout_marginEnd="8dp"
-                android:text="Updated at x time"
-                android:textSize="10sp"
+                android:layout_marginStart="8dp"
+                android:text="@string/placeholder"
+                android:textAlignment="textStart"
+                android:textSize="12sp"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/v_layout" />
 
             <View
                 android:id="@+id/v_layout"
@@ -142,7 +149,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="Humidity"
+                android:text="@string/humidity"
                 app:layout_constraintEnd_toStartOf="@+id/pb_current"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/tv_safetoride" />
@@ -154,7 +161,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="some %"
+                android:text="@string/placeholder"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/pb_current"
                 app:layout_constraintTop_toBottomOf="@+id/tv_safetoride" />
@@ -166,7 +173,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="Cloud cover"
+                android:text="@string/cloud_cover"
                 app:layout_constraintEnd_toStartOf="@+id/pb_current"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/tv_humidity" />
@@ -178,7 +185,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="some %"
+                android:text="@string/placeholder"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/pb_current"
                 app:layout_constraintTop_toBottomOf="@+id/tv_humidity_val" />
@@ -190,7 +197,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="Sunrise at"
+                android:text="@string/sunrise"
                 app:layout_constraintEnd_toStartOf="@+id/pb_current"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/tv_cloud_cover" />
@@ -202,7 +209,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="Some time"
+                android:text="@string/placeholder"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/pb_current"
                 app:layout_constraintTop_toBottomOf="@+id/tv_cloud_cover_val" />
@@ -214,7 +221,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="Sunset at"
+                android:text="@string/sunset"
                 app:layout_constraintEnd_toStartOf="@+id/pb_current"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/tv_sunrise" />
@@ -226,7 +233,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="Some time"
+                android:text="@string/placeholder"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/pb_current"
                 app:layout_constraintTop_toBottomOf="@+id/tv_sunrise_val" />
@@ -238,7 +245,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="Wind speed"
+                android:text="@string/windspeed"
                 app:layout_constraintEnd_toStartOf="@+id/pb_current"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/tv_sunset" />
@@ -250,7 +257,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="2 m/s"
+                android:text="@string/placeholder"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/pb_current"
                 app:layout_constraintTop_toBottomOf="@+id/tv_sunset_val" />
@@ -263,7 +270,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="From"
+                android:text="@string/winddir"
                 app:layout_constraintBottom_toTopOf="@+id/tv_location"
                 app:layout_constraintEnd_toStartOf="@+id/v_layout"
                 app:layout_constraintStart_toStartOf="parent"
@@ -277,7 +284,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="90"
+                android:text="@string/placeholder"
                 app:layout_constraintBottom_toTopOf="@+id/tv_updated_at"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/v_layout"
@@ -290,7 +297,7 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="Safe to Ride"
+                android:text="@string/placeholder"
                 android:textAlignment="center"
                 android:textSize="25sp"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -307,7 +314,7 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
         android:layout_marginTop="5dp"
-        android:text="GO"
+        android:text="@string/go"
         app:layout_constraintBottom_toBottomOf="@+id/et_location"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />

@@ -68,7 +68,6 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     /*
     todo
-    ad removal purchase
     highlight high values
     logo
      */
@@ -90,8 +89,6 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         var bundle = Bundle()
         bundle.putString(FirebaseAnalytics.Param.CONTENT, "app_open")
         mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, bundle)
-
-
 
         billingClient = BillingClient.newBuilder(this).setListener(this).build()
         billingClient.startConnection(object : BillingClientStateListener {
@@ -193,6 +190,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
             //check if ad removal has been purchased
             var shouldShowAds = true
 
+
             if(purchasesResult.purchasesList != null) {
                 for (purchase in purchasesResult.purchasesList) {
                     when (purchase.sku) {
@@ -201,7 +199,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                             Log.d("AdRemoval","Ad removal purchased: not showing ads: purchase token " + purchase.purchaseToken)
                         }
                         else -> {
-                            Crashlytics.log(Log.ERROR, "PurchaseError", "Unknown purchase SKU")
+                            Crashlytics.log(Log.ERROR, "PurchaseError", "Unknown purchase SKU: " + purchase.sku)
                         }
                     }
 
@@ -227,6 +225,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
             } else {
                 runOnUiThread {
                     av_main_bottom.visibility = View.GONE
+                    Log.d("AdRemoval","Disabling adview")
                 }
             }
         }
@@ -314,6 +313,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
                     } else {
                         Toast.makeText(applicationContext, "Can't get location - services may be off",Toast.LENGTH_LONG).show()
+                        pb_current.visibility = View.GONE
                     }
                 }
 
@@ -345,7 +345,6 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
-                    //todo disable asking again if they say no
                     snackbar(et_location, "Location permission not approved").show()
                 }
                 return
@@ -628,7 +627,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 imm.hideSoftInputFromWindow(et_location.windowToken, 0)
             }
         } catch (e: Exception){
-            Log.e("hidesoftkeyboard",e.message)
+            Crashlytics.log(Log.ERROR, "hidesoftkeyboard", e.message)
         }
     }
 

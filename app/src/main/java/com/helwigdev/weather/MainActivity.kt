@@ -21,12 +21,21 @@ import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import com.android.billingclient.api.BillingClient
+import com.android.billingclient.api.BillingClientStateListener
+import com.android.billingclient.api.ConsumeResponseListener
+import com.android.billingclient.api.Purchase
+import com.android.billingclient.api.PurchasesUpdatedListener
+import com.android.vending.billing.IInAppBillingService
+import com.crashlytics.android.Crashlytics
 import com.google.ads.mediation.admob.AdMobAdapter
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.analytics.FirebaseAnalytics
+import com.helwigdev.weather.R.id.async
+import com.helwigdev.weather.R.id.av_main_bottom
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.*
 import org.jetbrains.anko.design.snackbar
@@ -39,11 +48,13 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
+
 
     private lateinit var weatherViews: Array<View>
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var mFirebaseAnalytics: FirebaseAnalytics
+    private lateinit var billingClient: BillingClient
 
     private lateinit var prefs: SharedPreferences
     private val HAS_AGREED_DISCLAIMER = "has_agreed_disclaimer"
@@ -57,7 +68,6 @@ class MainActivity : AppCompatActivity() {
 
     /*
     todo
-    layout tweaks - bigger font?
     ad removal purchase
     highlight high values
     logo
@@ -81,21 +91,23 @@ class MainActivity : AppCompatActivity() {
         bundle.putString(FirebaseAnalytics.Param.CONTENT, "app_open")
         mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, bundle)
 
-        //initialize ads
-        MobileAds.initialize(this, ADMOB_APP_ID)
-        if(prefs.getBoolean(HAS_CONSENTED_PERSONALIZED_ADS, false)) {
-            av_main_bottom.loadAd(AdRequest.Builder().addTestDevice("F6C603C77A3FF9E5A5C1201A22C8CEC1").build())
-        } else {
-            //consent not given
-            val extras = Bundle()
-            extras.putString("npa", "1")
 
-            av_main_bottom.loadAd(AdRequest.Builder()
-                    .addNetworkExtrasBundle(AdMobAdapter::class.java, extras)
-                    .addTestDevice("F6C603C77A3FF9E5A5C1201A22C8CEC1")
-                    .build())
-        }
 
+        billingClient = BillingClient.newBuilder(this).setListener(this).build()
+        billingClient.startConnection(object : BillingClientStateListener {
+            override fun onBillingSetupFinished(@BillingClient.BillingResponse billingResponseCode: Int) {
+                if (billingResponseCode == BillingClient.BillingResponse.OK) {
+                    // The billing client is ready. You can query purchases here.
+                    //disable ad removal if it's already been purchased
+                    initializeAdsIfNecessary()
+                }
+            }
+            override fun onBillingServiceDisconnected() {
+                // Try to restart the connection on the next request to
+                // Google Play by calling the startConnection() method.
+                billingClient.startConnection(this)
+            }
+        })
 
 
         val shouldShowDisclaimer = !prefs.getBoolean(HAS_AGREED_DISCLAIMER, false)
@@ -142,6 +154,8 @@ class MainActivity : AppCompatActivity() {
         }
 
 
+
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         weatherViews = arrayOf(cv_main_weather, iv_icon, tv_weather_main,
@@ -170,6 +184,87 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
+
+    private fun initializeAdsIfNecessary(){
+        val purchasesResult = billingClient.queryPurchases(BillingClient.SkuType.INAPP)
+        doAsync {
+            //initialize ads
+
+            //check if ad removal has been purchased
+            var shouldShowAds = true
+
+            if(purchasesResult.purchasesList != null) {
+                for (purchase in purchasesResult.purchasesList) {
+                    when (purchase.sku) {
+                        skuRemoveAds -> {
+                            shouldShowAds = false
+                            Log.d("AdRemoval","Ad removal purchased: not showing ads: purchase token " + purchase.purchaseToken)
+                        }
+                        else -> {
+                            Crashlytics.log(Log.ERROR, "PurchaseError", "Unknown purchase SKU")
+                        }
+                    }
+
+                }
+            }
+
+            if(shouldShowAds) {
+                MobileAds.initialize(applicationContext, ADMOB_APP_ID)
+                if (prefs.getBoolean(HAS_CONSENTED_PERSONALIZED_ADS, false)) {
+
+                    runOnUiThread { av_main_bottom.loadAd(AdRequest.Builder().addTestDevice("F6C603C77A3FF9E5A5C1201A22C8CEC1").build()) }
+                } else {
+                    //consent not given
+                    val extras = Bundle()
+                    extras.putString("npa", "1")
+                    runOnUiThread {
+                        av_main_bottom.loadAd(AdRequest.Builder()
+                                .addNetworkExtrasBundle(AdMobAdapter::class.java, extras)
+                                .addTestDevice("F6C603C77A3FF9E5A5C1201A22C8CEC1")
+                                .build())
+                    }
+                }
+            } else {
+                runOnUiThread {
+                    av_main_bottom.visibility = View.GONE
+                }
+            }
+        }
+    }
+
+
+    override fun onResume() {
+        val  purchasesResult = billingClient.queryPurchases(BillingClient.SkuType.INAPP)
+        if(purchasesResult.purchasesList != null) {
+            updatePurchases(purchasesResult.purchasesList)
+        }
+
+        super.onResume()
+    }
+
+    override fun onPurchasesUpdated(responseCode: Int, purchases: MutableList<Purchase>?) {
+        if (responseCode == BillingClient.BillingResponse.OK && purchases != null) {
+            updatePurchases(purchases)
+        }
+    }
+
+    private fun updatePurchases(purchases: MutableList<Purchase>) {
+        for (purchase in purchases) {
+            when(purchase.sku){
+                skuRemoveAds ->{
+                    prefs.edit()
+                            .putString("purchase_token", purchase.purchaseToken)
+                            .apply()
+                    initializeAdsIfNecessary()
+                }
+                else -> {
+                    Crashlytics.log(Log.ERROR, "PurchaseError","Unknown purchase SKU")
+                }
+            }
+
+        }
+    }
+
 
     //link menu to activity
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -541,6 +636,13 @@ class MainActivity : AppCompatActivity() {
         pb_current.visibility = View.VISIBLE
         blankView()
 
+
+    }
+
+    companion object {
+
+        val skuRemoveAds = "htt_iap_remove_ads"
+        val skuList = arrayListOf(skuRemoveAds)
 
     }
 

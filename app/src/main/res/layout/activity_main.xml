@@ -334,7 +334,6 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="8dp"
         android:background="@color/colorPrimaryDark"
         ads:adSize="SMART_BANNER"
         ads:adUnitId="ca-app-pub-5637328886369714/7529337595"

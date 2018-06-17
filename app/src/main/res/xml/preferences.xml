@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <EditTextPreference
+        android:key="owm_api_key"
+        android:summary="You can optionally provide your own OWM API key"
+        android:title="OpenWeatherMap API Key" />
+    <PreferenceCategory android:title="@string/ad_settings">
+
+
+    <SwitchPreference
+        android:defaultValue="false"
+        android:key="has_consented_personalized_ads"
+        android:summary="Enable ad personalization"
+        android:title="Personalize ads" />
+
+        <Preference
+            android:title="Watch an Ad"
+            android:summary="Support the developer by watching a short ad"
+            android:key="pref_watch_ad"
+            />
+
+        <Preference
+            android:title="Remove Ads"
+            android:summary="Support the developer by purchasing ad removal"
+            android:key="pref_remove_ads"
+            />
+
+    </PreferenceCategory>
+</PreferenceScreen>

@@ -7,6 +7,13 @@
         android:icon="@drawable/ic_refresh"
         android:title="@string/refresh"
         app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/mi_loadhere"
+        android:title="@string/currentlocation"
+        android:icon="@drawable/ic_location"
+        app:showAsAction="ifRoom"
+        />
     <item
         android:id="@+id/mi_settings"
         android:title="@string/settings"

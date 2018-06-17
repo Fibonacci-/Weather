@@ -3,6 +3,7 @@ package com.helwigdev.weather
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
@@ -20,15 +21,18 @@ import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import com.google.ads.mediation.admob.AdMobAdapter
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.*
 import org.jetbrains.anko.design.snackbar
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
-import java.io.FileNotFoundException
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -37,31 +41,26 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var weatherViews: Array<View>
+    private lateinit var weatherViews: Array<View>
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var mFirebaseAnalytics: FirebaseAnalytics
 
     private lateinit var prefs: SharedPreferences
-    private val PREFS_FILENAME = "com.helwigdev.weather.prefs"
     private val HAS_AGREED_DISCLAIMER = "has_agreed_disclaimer"
     private val HAS_ASKED_ADS = "has_asked_ads"
     private val HAS_CONSENTED_PERSONALIZED_ADS = "has_consented_personalized_ads"
     private val MOST_RECENT_URL = "most_recent_url"
-
-    private val API_KEY = "d5e3e279a6601eb65caa7464c1f5a356"
+    private var API_KEY = "d5e3e279a6601eb65caa7464c1f5a356"
     private val PERM_REQUEST_COARSE_LOCATION = 5
+    private val ADMOB_APP_ID = "ca-app-pub-5637328886369714~9365163449"
+    private val PREF_OWM_API = "owm_api_key"
 
     /*
     todo
     layout tweaks - bigger font?
-    disclaimer with OK
-    analytics
-    ads
     ad removal purchase
+    highlight high values
     logo
-    refresh button (mostrecenturl pref object)
-    settings pane
-    adjust thresholds?
-
      */
 
     /*
@@ -71,23 +70,57 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        prefs = this.getSharedPreferences(PREFS_FILENAME, 0)
+        prefs = this.defaultSharedPreferences
+
+        if(prefs.contains(PREF_OWM_API) && prefs.getString(PREF_OWM_API, "") != ""){
+            API_KEY = prefs.getString(PREF_OWM_API, API_KEY)
+        }
+
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this)
+        var bundle = Bundle()
+        bundle.putString(FirebaseAnalytics.Param.CONTENT, "app_open")
+        mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, bundle)
+
+        //initialize ads
+        MobileAds.initialize(this, ADMOB_APP_ID)
+        if(prefs.getBoolean(HAS_CONSENTED_PERSONALIZED_ADS, false)) {
+            av_main_bottom.loadAd(AdRequest.Builder().addTestDevice("F6C603C77A3FF9E5A5C1201A22C8CEC1").build())
+        } else {
+            //consent not given
+            val extras = Bundle()
+            extras.putString("npa", "1")
+
+            av_main_bottom.loadAd(AdRequest.Builder()
+                    .addNetworkExtrasBundle(AdMobAdapter::class.java, extras)
+                    .addTestDevice("F6C603C77A3FF9E5A5C1201A22C8CEC1")
+                    .build())
+        }
+
 
 
         val shouldShowDisclaimer = !prefs.getBoolean(HAS_AGREED_DISCLAIMER, false)
         val shouldShowAdOption = !prefs.getBoolean(HAS_ASKED_ADS, false)
         if(shouldShowDisclaimer) {
-            alert("Some disclaimer") {
+            alert("Safety is your responsibility. This app only provides a guideline.") {
                 positiveButton("I agree") {
                     Log.d("disclaimer", "user agreed")
                     val editor = prefs.edit()
                     editor.putBoolean(HAS_AGREED_DISCLAIMER, true)
                     editor.apply()
+                    bundle = Bundle()
+                    bundle.putString("disclaimer", "agreed")
+                    mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle)
                 }
                 negativeButton("I do not agree") {
+                    bundle = Bundle()
+                    bundle.putString("disclaimer", "declined")
+                    mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle)
                     finish()
                 }
                 onCancelled {
+                    bundle = Bundle()
+                    bundle.putString("disclaimer", "cancelled")
+                    mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle)
                     finish()
                 }
             }.show()
@@ -107,6 +140,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }.show()
         }
+
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -131,6 +165,8 @@ class MainActivity : AppCompatActivity() {
         //attempt to load weather for current location
         if(isLocationApproved()){
             getCurrentLocationWeather()
+        } else {
+            pb_current.visibility = View.GONE
         }
 
     }
@@ -147,8 +183,18 @@ class MainActivity : AppCompatActivity() {
                 refresh()
                 true
             }
+            R.id.mi_loadhere -> {
+                if(isLocationApproved()){
+                    getCurrentLocationWeather()
+                } else {
+                    snackbar(et_location, "Location permission not approved").show()
+                    pb_current.visibility = View.GONE
+                }
+                true
+            }
             R.id.mi_settings -> {
-                toast("settings clicked").show()
+                val intent = Intent(applicationContext, SettingsActivity::class.java)
+                startActivity(intent)
                 true
             }
 
@@ -205,7 +251,7 @@ class MainActivity : AppCompatActivity() {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
                     //todo disable asking again if they say no
-                    Toast.makeText(applicationContext, "Location permission denied",Toast.LENGTH_LONG).show()
+                    snackbar(et_location, "Location permission not approved").show()
                 }
                 return
             }
@@ -253,6 +299,11 @@ class MainActivity : AppCompatActivity() {
         val cm = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val activeNetwork: NetworkInfo? = cm.activeNetworkInfo
         val isConnected: Boolean = activeNetwork?.isConnected== true
+
+        var bundle = Bundle()
+        bundle.putBoolean("networkstatus",isConnected)
+        mFirebaseAnalytics.logEvent("action_update_weather", bundle)
+
         //should be run inside an asynctask
         if(isConnected) {
             doAsync {
@@ -337,12 +388,14 @@ class MainActivity : AppCompatActivity() {
 
                     //stamp to date
                     val date = Date(timestamp * 1000)
+                    @Suppress("DEPRECATION")
                     val sdf = SimpleDateFormat("EEE, h:mm a", resources.configuration.locale)
                     val updatedAt = "Data from " + sdf.format(date)
 
                     //sunrise, sunset to string
                     val riseDate = Date(sunriseStamp * 1000)
                     val setDate = Date(sunsetStamp * 1000)
+                    @Suppress("DEPRECATION")
                     val risesetSdf = SimpleDateFormat("hh:mm a", resources.configuration.locale)
                     val sunriseAt = risesetSdf.format(riseDate)
                     val sunsetAt = risesetSdf.format(setDate)
@@ -362,33 +415,37 @@ class MainActivity : AppCompatActivity() {
                         val formatTempF = "%.2f".format(tempF)
                         tv_weather_main.text = getString(R.string.weather_main_format, weatherString, formatTempF)
                         tv_weather_description.text = weatherDesc
-                        tv_humidity_val.text = "$humidityPercent%"
-                        tv_location.text = "$town, $country"
+                        tv_humidity_val.text = getString(R.string.perc_format, humidityPercent)
+                        tv_location.text = getString(R.string.location_format, town, country)
                         tv_updated_at.text = updatedAt
                         iv_icon.setImageBitmap(image)
-                        tv_cloud_cover_val.text = "$cloudPercent%"
+                        tv_cloud_cover_val.text = getString(R.string.perc_format, cloudPercent)
                         tv_sunrise_val.text = sunriseAt
                         tv_sunset_val.text = sunsetAt
                         tv_windspeed_val.text = windSpeedMph
-                        tv_winddir_val.text = "$windDir°"
+                        tv_winddir_val.text = getString(R.string.winddir_format, windDir)
 
                         when {
-                            factor < 130 -> {
+                            factor < 120 -> {
                                 //good to go
-                                tv_safetoride.text = "Safe to ride"
+                                tv_safetoride.text = getString(R.string.safe)
                                 tv_safetoride.setTextColor(Color.GREEN)
                             }
-                            factor < 170 -> {
+                            factor < 160 -> {
                                 //caution
-                                tv_safetoride.text = "Caution! Cooling compromised"
+                                tv_safetoride.text = getString(R.string.caution)
                                 tv_safetoride.setTextColor(Color.rgb(255, 102, 0))
                             }
                             else -> {
                                 //danger
-                                tv_safetoride.text = "DANGER! DO NOT RIDE"
+                                tv_safetoride.text = getString(R.string.danger)
                                 tv_safetoride.setTextColor(Color.RED)
                             }
                         }
+
+                        bundle = Bundle()
+                        bundle.putBoolean("updatesuccess",true)
+                        mFirebaseAnalytics.logEvent("action_update_weather", bundle)
 
                         unblankView()
                     }
@@ -398,7 +455,16 @@ class MainActivity : AppCompatActivity() {
                     try {
                         val parent = JSONObject(result)
                         val error = parent.getInt("cod")
-                        snackbar(et_location, "Server error: $error").show()
+                        var errString = "Server error: $error"
+                        when (error) {
+                            401 -> {
+                                errString = "Error $error: is your API key correct?"
+                            }
+                            404 -> {
+                                errString = "Location not recognized"
+                            }
+                        }
+                        snackbar(et_location, errString).show()
                     } catch (e: JSONException) {
                         //couldn't get response
                         snackbar(et_location, "No response returned from server").show()
@@ -460,10 +526,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideSoftKeyBoard() {
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        try {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
-        if (imm.isAcceptingText) { // verify if the soft keyboard is open
-            imm.hideSoftInputFromWindow(currentFocus!!.windowToken, 0)
+            if (imm.isAcceptingText) { // verify if the soft keyboard is open
+                imm.hideSoftInputFromWindow(et_location.windowToken, 0)
+            }
+        } catch (e: Exception){
+            Log.e("hidesoftkeyboard",e.message)
         }
     }
 

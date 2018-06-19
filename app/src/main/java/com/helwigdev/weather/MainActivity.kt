@@ -121,6 +121,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 positiveButton("I agree") {
                     Log.d("disclaimer", "user agreed")
                     val editor = prefs.edit()
+                    //might not actually need this, but best to have it anyway
                     editor.putBoolean(HAS_AGREED_DISCLAIMER, true)
                     editor.apply()
                     bundle = Bundle()

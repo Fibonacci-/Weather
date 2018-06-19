@@ -17,8 +17,8 @@
     <string name="windspeed">Wind speed</string>
     <string name="winddir">Wind direction</string>
     <string name="currentlocation">Load current location</string>
-    <string name="danger">DANGER! DO NOT RIDE</string>
-    <string name="caution">Caution! Cooling compromised</string>
+    <string name="danger">Riding not recommended!</string>
+    <string name="caution">Exercise caution:\nextra cooling recommended</string>
     <string name="safe">Safe to ride</string>
     <string name="title_activity_settings">Settings</string>
 

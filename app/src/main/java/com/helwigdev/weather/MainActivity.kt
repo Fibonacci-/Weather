@@ -116,7 +116,8 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         if(shouldShowDisclaimer) {
             //todo write a better disclaimer?
             //quit unless we get an agree
-            alert("Safety is your responsibility. This app only provides a guideline.") {
+            alert("Safety is your responsibility. This app only provides a guideline. " +
+                    "Please talk to your vet or trainer if you're unsure of safety.") {
                 positiveButton("I agree") {
                     Log.d("disclaimer", "user agreed")
                     val editor = prefs.edit()

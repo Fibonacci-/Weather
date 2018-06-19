@@ -115,6 +115,9 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         private fun loadRewardedVideoAd() {
+            val bundle = Bundle()
+            bundle.putString("rewarded_video","load event")
+            mFirebaseAnalytics.logEvent("rewarded_video_watch", bundle)
             mRewardedVideoAd.loadAd("ca-app-pub-5637328886369714/8266993759",
                     AdRequest.Builder()
                             .addTestDevice("F6C603C77A3FF9E5A5C1201A22C8CEC1")

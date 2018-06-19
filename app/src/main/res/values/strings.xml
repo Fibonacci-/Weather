@@ -8,7 +8,7 @@
     <string name="go">GO</string>
     <string name="weather_main_format">%1$s, %2$s°F</string>
     <string name="winddir_format">%1$d°</string>
-    <string name="perc_format" formatted="true">%1$d %%</string>
+    <string name="perc_format" formatted="true">%1$d%%</string>
     <string name="location_format">%1$s, %2$s</string>
     <string name="humidity">Humidity</string>
     <string name="cloud_cover">Cloud cover</string>

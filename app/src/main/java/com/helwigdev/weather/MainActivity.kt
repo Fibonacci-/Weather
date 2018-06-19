@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     /*
     todo
     highlight high values
-    logo
+    add rain
      */
 
     /*
@@ -79,12 +79,15 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         prefs = this.defaultSharedPreferences
 
+        //check if we should use the user's api key or ours
         if(prefs.contains(PREF_OWM_API) && prefs.getString(PREF_OWM_API, "") != ""){
             API_KEY = prefs.getString(PREF_OWM_API, API_KEY)
         }
 
+        //init analytics and billing
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this)
         var bundle = Bundle()
         bundle.putString(FirebaseAnalytics.Param.CONTENT, "app_open")
@@ -106,10 +109,13 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
             }
         })
 
-
+        //show alerts if necessary
+        //else if format ensures only one is shown at a time so as not to annoy the user
         val shouldShowDisclaimer = !prefs.getBoolean(HAS_AGREED_DISCLAIMER, false)
         val shouldShowAdOption = !prefs.getBoolean(HAS_ASKED_ADS, false)
         if(shouldShowDisclaimer) {
+            //todo write a better disclaimer?
+            //quit unless we get an agree
             alert("Safety is your responsibility. This app only provides a guideline.") {
                 positiveButton("I agree") {
                     Log.d("disclaimer", "user agreed")
@@ -157,6 +163,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
         weatherViews = arrayOf(cv_main_weather, iv_icon, tv_weather_main,
                 tv_weather_description, v_layout, tv_humidity, tv_humidity_val,
+                tv_uv_index, tv_uv_index_val,
                 tv_cloud_cover, tv_cloud_cover_val, tv_sunrise, tv_sunrise_val,
                 tv_sunset, tv_sunset_val, tv_windspeed, tv_windspeed_val,
                 tv_winddir, tv_winddir_val, tv_location, tv_updated_at, tv_safetoride)
@@ -183,14 +190,13 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     private fun initializeAdsIfNecessary(){
+        //i don't think the billing client likes async calls?
         val purchasesResult = billingClient.queryPurchases(BillingClient.SkuType.INAPP)
         doAsync {
             //initialize ads
 
             //check if ad removal has been purchased
             var shouldShowAds = true
-
-
             if(purchasesResult.purchasesList != null) {
                 for (purchase in purchasesResult.purchasesList) {
                     when (purchase.sku) {
@@ -212,7 +218,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
                     runOnUiThread { av_main_bottom.loadAd(AdRequest.Builder().addTestDevice("F6C603C77A3FF9E5A5C1201A22C8CEC1").build()) }
                 } else {
-                    //consent not given
+                    //consent not given, mark as non-tracked ad
                     val extras = Bundle()
                     extras.putString("npa", "1")
                     runOnUiThread {
@@ -233,6 +239,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
 
     override fun onResume() {
+        //make sure we disable ads when returning from settings if need be
         val  purchasesResult = billingClient.queryPurchases(BillingClient.SkuType.INAPP)
         if(purchasesResult.purchasesList != null) {
             updatePurchases(purchasesResult.purchasesList)
@@ -242,6 +249,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     override fun onPurchasesUpdated(responseCode: Int, purchases: MutableList<Purchase>?) {
+        //if, somehow, a purchase is made while this activity is active
         if (responseCode == BillingClient.BillingResponse.OK && purchases != null) {
             updatePurchases(purchases)
         }
@@ -272,6 +280,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+        //take action when menu items are clicked
         return when(item?.itemId){
             R.id.mi_refresh -> {
                 refresh()
@@ -281,6 +290,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 if(isLocationApproved()){
                     getCurrentLocationWeather()
                 } else {
+                    //lol wtf user
                     snackbar(et_location, "Location permission not approved").show()
                     pb_current.visibility = View.GONE
                 }
@@ -300,6 +310,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     weather retrieval-related methods
      */
 
+    //this is only called after permissions are verified, and is separated out to avoid copy/paste
     @SuppressLint("MissingPermission")
     private fun getCurrentLocationWeather(){
         //Toast.makeText(applicationContext, "Fetching current location...", Toast.LENGTH_LONG).show()
@@ -319,6 +330,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     }
 
+    //ask for permissions or return true
     private fun isLocationApproved(): Boolean{
         return if (ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -333,6 +345,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         }
     }
 
+    //load that shizznit
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
         when (requestCode) {
@@ -370,6 +383,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         }
     }
 
+    //build weather url with a location string
     private fun getWeatherUrl(location: String): String{
         return "https://api.openweathermap.org/data/2.5/weather?q=" +
                 location +
@@ -377,6 +391,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 API_KEY
     }
 
+    //build weather url with lat/lon coordinates
     private fun getWeatherUrl(latitude: Double, longitude: Double): String{
         //docs: api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}
         return "https://api.openweathermap.org/data/2.5/weather?lat=" +
@@ -388,20 +403,25 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     }
 
+    //meat of the app
     private fun updateWeather(url: String){
         //check for internet connection
         val cm = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val activeNetwork: NetworkInfo? = cm.activeNetworkInfo
         val isConnected: Boolean = activeNetwork?.isConnected== true
 
+        //log to analytics
         var bundle = Bundle()
         bundle.putBoolean("networkstatus",isConnected)
         mFirebaseAnalytics.logEvent("action_update_weather", bundle)
 
-        //should be run inside an asynctask
+        //run inside an asynctask (god i love kotlin)
         if(isConnected) {
             doAsync {
+                //because i'm still clumsy with kotlin
                 var result = ""
+
+                //update url in prefs
                 val editor = prefs.edit()
                 editor.putString(MOST_RECENT_URL, url)
                 editor.apply()
@@ -410,17 +430,18 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     changeViewToLoading()
                 }
 
+                //get data from api
                 val obj = URL(url)
-
+                //assume the worst
                 var errored = true
-
                 with(obj.openConnection() as HttpURLConnection) {
                     // optional default is GET
                     requestMethod = "GET"
 
-
+                    //load regular data
                     if (responseCode == HttpURLConnection.HTTP_OK) {
                         errored = false
+                        //standard reader
                         BufferedReader(InputStreamReader(inputStream)).use {
                             val response = StringBuffer()
 
@@ -432,6 +453,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                             result = response.toString()
                         }
                     } else {
+                        //things went poorly
                         BufferedReader(InputStreamReader(errorStream)).use {
                             val response = StringBuffer()
 
@@ -449,7 +471,31 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
                 if (!errored) {
 
+                    //grab all the data we need to init the view
+                    //standard json loads
                     val parent = JSONObject(result)
+                    var uvIndex = 0.0
+                    var uvIndexColor = tv_uv_index.currentTextColor
+
+                    try{
+                        //get UV index
+                        val lat = parent.getJSONObject("coord").getString("lat")
+                        val lon = parent.getJSONObject("coord").getString("lon")
+                        val uvs = "https://api.openweathermap.org/data/2.5/uvi?lat=" +
+                                lat +
+                                "&lon=" +
+                                lon +
+                                "&APPID=" +
+                                API_KEY
+                        val uvUrl = URL(uvs)
+
+                        //we don't need fancy error handling for this bit
+                        val response = JSONObject(uvUrl.readText())
+                        uvIndex = response.getDouble("value")
+
+                    } catch (e: Exception){
+                        Crashlytics.log(Log.ERROR, "uvindex",e.message)
+                    }
 
                     //we now have the data from the api
                     //extract everything we need
@@ -466,15 +512,17 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     val sunriseStamp = parent.getJSONObject("sys").getString("sunrise").toLong()
                     val sunsetStamp = parent.getJSONObject("sys").getString("sunset").toLong()
 
-                    //need wind speed, gusts, direction
+                    //need wind speed, direction
                     //m/s to mph: * 2.2369
                     val windSpeedMS = parent.getJSONObject("wind").getDouble("speed")
 
                     var windDir = 0
+                    //this is not a guaranteed variable, if wind is still it'll just be gone
                     if (parent.getJSONObject("wind").has("deg")) {
                         windDir = parent.getJSONObject("wind").getInt("deg")
                     }
 
+                    //everyone wants values like 3.234924352345 MPH, right?
                     val windSpeedMph = "%.1f".format((windSpeedMS * 2.2369)) + " MPH"
 
                     //convert kelvin to fahrenheit
@@ -482,6 +530,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
                     //stamp to date
                     val date = Date(timestamp * 1000)
+                    //i haven't been able to find another way of getting the current locale compatible with api 19-25
                     @Suppress("DEPRECATION")
                     val sdf = SimpleDateFormat("EEE, h:mm a", resources.configuration.locale)
                     val updatedAt = "Data from " + sdf.format(date)
@@ -505,11 +554,24 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     val factor = tempF + humidityPercent
 
 
+                    //calculate color of UV index value
+                    uvIndexColor = when(uvIndex) {
+                        in 0..2 -> R.color.darkGreen
+                        in 2..5 -> R.color.darkYellow
+                        in 5..7 -> R.color.darkOrange
+                        in 7..10 -> R.color.darkRed
+                        else -> R.color.purple
+                    }
+
+
                     runOnUiThread {
+                        //set the texts
                         val formatTempF = "%.2f".format(tempF)
                         tv_weather_main.text = getString(R.string.weather_main_format, weatherString, formatTempF)
                         tv_weather_description.text = weatherDesc
                         tv_humidity_val.text = getString(R.string.perc_format, humidityPercent)
+                        tv_uv_index_val.text = uvIndex.toString()
+                        tv_uv_index_val.setTextColor(resources.getColor(uvIndexColor))
                         tv_location.text = getString(R.string.location_format, town, country)
                         tv_updated_at.text = updatedAt
                         iv_icon.setImageBitmap(image)
@@ -519,6 +581,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                         tv_windspeed_val.text = windSpeedMph
                         tv_winddir_val.text = getString(R.string.winddir_format, windDir)
 
+                        //set ride safety
                         when {
                             factor < 120 -> {
                                 //good to go
@@ -544,12 +607,13 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                         unblankView()
                     }
                 } else {
-                    //if there was an error
+                    //if there was an error, show it
                     runOnUiThread { pb_current.visibility = View.GONE }
                     try {
                         val parent = JSONObject(result)
                         val error = parent.getInt("cod")
                         var errString = "Server error: $error"
+                        //add details if necessary
                         when (error) {
                             401 -> {
                                 errString = "Error $error: is your API key correct?"
@@ -577,13 +641,14 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
      */
 
     private fun blankView(after: Runnable){
+        //allow running a runnable after the animations complete
         var didRunAfter = false
         for (view in weatherViews){
 
             if(!didRunAfter){
                 view.animate()
                         .alpha(0.0f)
-                        .setStartDelay(0)
+                        .setStartDelay(0)//because the start delay persists between .animate calls
                         .withEndAction(after)
                         .duration = 300
                 didRunAfter = true
@@ -605,6 +670,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     private fun unblankView(){
+        //fancy af animations
         pb_current.visibility = View.GONE
         et_location.clearFocus()
         var startDelay: Long = 0
@@ -640,6 +706,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     companion object {
 
+        //shared static values
         val skuRemoveAds = "htt_iap_remove_ads"
         val skuList = arrayListOf(skuRemoveAds)
 
